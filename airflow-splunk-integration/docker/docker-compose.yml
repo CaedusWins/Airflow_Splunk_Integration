@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  airflow:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    entrypoint: ["/entrypoint.sh"]
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://postgres:postgres@db:5432/testdb
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/testdb
+      - SPLUNK_HEC_URL=https://splunk:8088/services/collector
+      - SPLUNK_HEC_TOKEN=be65d495-a4ff-45e4-be9d-d6dc7a6f9ad5
+      - AIRFLOW__WEBSERVER__SECRET_KEY=supersecretkey
+      - AIRFLOW__CORE__FERNET_KEY=qNRXH93Anbn0NQm2osrR4y-vvYeXEZOd7TD6fkkdaes=
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+    volumes:
+      - ../dags:/opt/airflow/dags
+      - ../scripts:/opt/airflow/scripts
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+      - splunk
+
+  scheduler:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    entrypoint: ["/entrypoint.sh", "scheduler"]
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://postgres:postgres@db:5432/testdb
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/testdb
+      - SPLUNK_HEC_URL=https://splunk:8088/services/collector
+      - SPLUNK_HEC_TOKEN=be65d495-a4ff-45e4-be9d-d6dc7a6f9ad5
+      - AIRFLOW__WEBSERVER__SECRET_KEY=supersecretkey
+      - AIRFLOW__CORE__FERNET_KEY=qNRXH93Anbn0NQm2osrR4y-vvYeXEZOd7TD6fkkdaes=
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+    volumes:
+      - ../dags:/opt/airflow/dags
+      - ../scripts:/opt/airflow/scripts
+    depends_on:
+      - db
+      - splunk
+
+  db:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: testdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  splunk:
+    image: splunk/splunk:latest
+    environment:
+      - SPLUNK_START_ARGS=--accept-license
+      - SPLUNK_PASSWORD=Baphomet10!
+      - SPLUNK_HEC_TOKEN=be65d495-a4ff-45e4-be9d-d6dc7a6f9ad5
+      - SPLUNK_HEC_PORT=8088
+      - SPLUNK_HEC_ENABLE=true
+    ports:
+      - "8000:8000"   # Splunk Web UI
+      - "8088:8088"   # Splunk HEC endpoint
+    volumes:
+      - splunk_data:/opt/splunk/var
+
+volumes:
+  db_data:
+  splunk_data:
